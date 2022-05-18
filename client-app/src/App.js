@@ -3,6 +3,7 @@ import './QuestionForm.css';
 import React from "react"
 import LoginForm from "./LoginForm"
 import QuestionForm from "./QuestionForm"
+import axios from 'axios';
 
 class App extends React.Component {
   constructor(props) {
@@ -10,24 +11,58 @@ class App extends React.Component {
       this.state = {
         value: '', 
         user: null, 
-        accessToken: null
+        token: null,
+        error: null
       }
 
       // this.handleChange = this.handleChange.bind(this);
       this.handleSubmit = this.handleSubmit.bind(this);
   }
 
-  handleSubmit(name) {
-    console.log("Received name in parent component: " + name);
-    this.setState({user: name})
+  async handleSubmit(name) {
+    const data = {
+      username: name,
+      password: "No password"
+    }
+
+    // const requestOptions = {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ name: this.state.value })
+    // }
+
+    try {
+      const result = await axios.post('http://localhost:8080/register', JSON.stringify(data))
+      console.log("Result: ", result);
+
+      this.setState({token: "ABC"})
+
+    } catch (err) {
+      let prevState = this.state;
+      prevState.error = err.message;
+      this.setState(prevState);
+      console.error("THER ERROR IS: ", err.message);
+    }
+    
+    // this.setState({redirect: "Question.js"});
   }
 
   render() {
-    if (this.state.user) {
-      return (<QuestionForm user={this.state.user} accessToken={this.state.accessToken} />)
+    let el;
+    if (this.state.token) {
+      el = <QuestionForm user={this.state.user} accessToken={this.state.accessToken} />;
     } else {
-      return (<LoginForm onSubmit={this.handleSubmit} />)
-    };
+      el = <LoginForm onSubmit={this.handleSubmit} />;
+    }
+
+    return (
+      <div className="App">
+        <header className="App-header">
+          {el}
+          <span>{this.state.error}</span>
+        </header>
+      </div>
+    )
   }
 }
 

@@ -85,8 +85,7 @@ class QuestionForm extends React.Component {
 
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
+      <div>
           <p>Hallo {this.state.user}</p>
           <div className="answers">
             <p>Wie is de oudste persoon op aarde?</p>
@@ -97,7 +96,6 @@ class QuestionForm extends React.Component {
           </div>
 
           <p>Vraag verloopt over 5 seconden</p>
-        </header>
       </div>
     );
   }

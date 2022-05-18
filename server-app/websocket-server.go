@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -57,33 +57,26 @@ func reader(conn *websocket.Conn) {
 	}
 }
 
+// User ...
+// Custom object which can be stored in the claims
 type User struct {
-	Name string
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-func register(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Register user")
+// AuthToken ...
+// This is what is retured to the user
+type AuthToken struct {
+	TokenType string `json:"token_type"`
+	Token     string `json:"access_token"`
+	ExpiresIn int64  `json:"expires_in"`
+}
 
-	user := &User{}
-	json.NewDecoder(r.Body).Decode(user)
-
-	expiresAt := time.Now().Add(time.Minute * 100000).Unix()
-	tk := &models.Token{
-		Name: user.Name,
-		StandardClaims: &jwt.StandardClaims{
-			ExpiresAt: expiresAt,
-		},
-	}
-	token := jwt.NewWithClaims(jwt.GetSigningMethod("HS256"), tk)
-	tokenString, err := token.SignedString([]byte("secret"))
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var resp = map[string]interface{}{"status": false, "message": "logged in"}
-	resp["token"] = tokenString
-	resp["user"] = user
-	json.NewEncoder(w).Encode(resp)
+// AuthTokenClaim ...
+// This is the cliam object which gets parsed from the authorization header
+type AuthTokenClaim struct {
+	*jwt.StandardClaims
+	User
 }
 
 func main() {
@@ -91,13 +84,57 @@ func main() {
 
 	r := mux.NewRouter()
 	r.Handle("/", http.FileServer(http.Dir("./views/")))
-	r.Handle("/register", register).Methods("POST")
+	r.Handle("/register", Register).Methods("POST", "OPTIONS")
 	r.Handle("/status", StatusHandler)
 
 	http.HandleFunc("/ws", wsEndpoint)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
+
+func writeCorsHeaders(w *http.ResponseWriter, req *http.Request) {
+	(*w).Header().Set("Access-Control-Allow-Origin", "*")
+	(*w).Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+}
+
+var Register = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	fmt.Fprintf(w, "Register user")
+
+	writeCorsHeaders(&w, req)
+	if (*req).Method == "OPTIONS" {
+		return
+	}
+
+	var user User
+	_ = json.NewDecoder(req.Body).Decode(&user)
+
+	fmt.Printf("Register user called: %s - %s\n", user.Username, user.Password)
+
+	// expiresAt := time.Now().Add(time.Minute * 1).Unix()
+
+	// token := jwt.New(jwt.SigningMethodHS256)
+
+	// token.Claims = &AuthTokenClaim{
+	// 	&jwt.StandardClaims{
+	// 		ExpiresAt: expiresAt,
+	// 	},
+	// 	User{user.Username, user.Password},
+	// }
+
+	// tokenString, error := token.SignedString([]byte("secret"))
+	// if error != nil {
+	// 	fmt.Println(error)
+	// }
+
+	w.Header().Set("Content-Type", "application/json")
+
+	// json.NewEncoder(w).Encode(AuthToken{
+	// 	Token:     tokenString,
+	// 	TokenType: "Bearer",
+	// 	ExpiresIn: expiresAt,
+	// })
+})
 
 var NotImplemented = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Not implemented"))
