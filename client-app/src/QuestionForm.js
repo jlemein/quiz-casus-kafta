@@ -46,36 +46,6 @@ class QuestionForm extends React.Component {
     this.submitAnswer = this.submitAnswer.bind(this);
   }
 
-  componentDidMount() {
-    console.log("Trying to connect to websocket");
-    this.socket = new WebSocket(this.state.wsUri);
-    this.socket.onopen = this.onSocketOpen.bind(this);
-    this.socket.onclose = this.onSocketClose.bind(this);
-    this.socket.onerror = this.onSocketError.bind(this);
-  }
-
-  onSocketOpen(evt) {
-    console.log("Connection opened");
-  }
-
-  onSocketError(evt) {
-    console.error(evt);
-  }
-
-  onSocketClose(evt) {
-    console.log("Connection closed");
-
-    if (evt.code !== 1000) {
-      // Connection is not closed normally
-      if (!navigator.onLine) {
-        let prevState = this.state;
-        prevState.errorMessage = "Je bent offline. Verbind a.u.b. opnieuw met het internet";
-        this.setState(prevState);
-      }
-    }
-  }
-
-
   submitAnswer(answer) {
     console.log("An answer was submitted: " + answer)
     this.socket.send({user: this.state.user, value: answer});
@@ -94,6 +64,7 @@ class QuestionForm extends React.Component {
             <button className="answer3" onClick={() => this.submitAnswer("C")}>Tarzan</button>
             <button className="answer4" onClick={() => this.submitAnswer("D")}>Tarzan</button>
           </div>
+          <button onClick={() => this.checkStatus()}>Controleer verbinding</button>
 
           <p>Vraag verloopt over 5 seconden</p>
       </div>

@@ -12,7 +12,8 @@ class App extends React.Component {
         value: '', 
         user: null, 
         token: null,
-        error: null
+        error: null,
+        wsUri: props.wsUri
       }
 
       // this.handleChange = this.handleChange.bind(this);
@@ -31,20 +32,68 @@ class App extends React.Component {
     //   body: JSON.stringify({ name: this.state.value })
     // }
 
-    try {
+    try 
+    {
       const result = await axios.post('http://localhost:8080/register', JSON.stringify(data))
-      console.log("Result: ", result);
+      const newState = this.state;
+      newState.error = null;
+      newState.token = result.data.access_token;
+      this.setState(newState);
 
-      this.setState({token: "ABC"})
+      console.log("Logged in with access token: ", newState.token);
 
-    } catch (err) {
+      // Logged in, now connect to websocket
+      console.log("Connecting with websocket:", this.state.wsUri);
+      this.socket = new WebSocket(this.state.wsUri);
+      this.socket.onopen = this.onSocketOpen.bind(this);
+      this.socket.onclose = this.onSocketClose.bind(this);
+      this.socket.onerror = this.onSocketError.bind(this);
+      this.socket.onmessage = this.onSocketMessage.bind(this);
+
+    } 
+    catch (err) 
+    {
       let prevState = this.state;
       prevState.error = err.message;
       this.setState(prevState);
-      console.error("THER ERROR IS: ", err.message);
+      console.error(err.message);
     }
     
     // this.setState({redirect: "Question.js"});
+  }
+
+  onSocketOpen(evt) {
+    console.log("Connection opened");
+  }
+
+  onSocketMessage(evt) {
+    // const json = JSON.parse(evt.data);
+    console.log(`[message] Data received from server: ${evt.data}`);
+
+    // try {
+    //   if ((json.event = "data")) {
+    //     console.log(json.data);
+    //   }
+    // } catch (err) {
+    //   console.err(err);
+    // }
+  }
+
+  onSocketError(evt) {
+    console.error(evt);
+  }
+
+  onSocketClose(evt) {
+    console.log("Connection closed");
+
+    if (evt.code !== 1000) {
+      // Connection is not closed normally
+      if (!navigator.onLine) {
+        let prevState = this.state;
+        prevState.errorMessage = "Je bent offline. Verbind a.u.b. opnieuw met het internet";
+        this.setState(prevState);
+      }
+    }
   }
 
   render() {
