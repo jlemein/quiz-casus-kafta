@@ -1,61 +1,61 @@
 import logo from './logo.svg';
 import './QuestionForm.css';
 import React from "react"
-import kafka from 'kafka-node'
+// import kafka from 'kafka-node'
 
-class MessageDisplay extends React.Component {
+// class MessageDisplay extends React.Component {
 
-  getInitialState() {
-    return { messages: [] };
-  }
+//   getInitialState() {
+//     return { messages: [] };
+//   }
 
-  onComponentDidMount() {
-    client = new kafka.KafkaClient();
-    consumer = new kafka.Consumer();
-    producer = new kafka.Producer();
+//   onComponentDidMount() {
+//     client = new kafka.KafkaClient();
+//     consumer = new kafka.Consumer();
+//     producer = new kafka.Producer();
 
-    consumer.on('message', function (message) {
-      var messageList = this.state.messages;
-      messageList.push(message);
-      this.setState({ message: messageList });
-    }).bind(this);
-  }
+//     consumer.on('message', function (message) {
+//       var messageList = this.state.messages;
+//       messageList.push(message);
+//       this.setState({ message: messageList });
+//     }).bind(this);
+//   }
 
-  onComponentWillUnmount() {
+//   onComponentWillUnmount() {
 
-  }
+//   }
 
-  render() {
-    var messageList = this.state.messages.map(function (message) {
-      return (<div>id={message.id} etc.</div>);
-    });
-    return (
-      <div className="commentBox">
-        {messageList}
-      </div>
-    );
-  }
-}
+//   render() {
+//     var messageList = this.state.messages.map(function (message) {
+//       return (<div>id={message.id} etc.</div>);
+//     });
+//     return (
+//       <div className="commentBox">
+//         {messageList}
+//       </div>
+//     );
+//   }
+// }
 
 
 class QuestionForm extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { value: '', user: props.user }
+    this.state = { value: '', user: props.user, wsUri: "ws://localhost:8080/ws" };
 
     this.submitAnswer = this.submitAnswer.bind(this);
   }
 
-
   submitAnswer(answer) {
     console.log("An answer was submitted: " + answer)
+    this.socket.send({user: this.state.user, value: answer});
+
     // this.setState({redirect: "Question.js"});
   }
 
   render() {
     return (
-      <div className="App">
-        <header className="App-header">
+      <div>
           <p>Hallo {this.state.user}</p>
           <div className="answers">
             <p>Wie is de oudste persoon op aarde?</p>
@@ -64,9 +64,9 @@ class QuestionForm extends React.Component {
             <button className="answer3" onClick={() => this.submitAnswer("C")}>Tarzan</button>
             <button className="answer4" onClick={() => this.submitAnswer("D")}>Tarzan</button>
           </div>
+          <button onClick={() => this.checkStatus()}>Controleer verbinding</button>
 
           <p>Vraag verloopt over 5 seconden</p>
-        </header>
       </div>
     );
   }
