@@ -4,51 +4,69 @@ import React from "react"
 import LoginForm from "./LoginForm"
 import QuestionForm from "./QuestionForm"
 import axios from 'axios';
+import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 
 class QuizMaster extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            value: '',
-            user: null,
-            token: null,
+            question_id: null,
+            title: "",
+            answer_a: "",
+            answer_b: "",
+            answer_c: "",
+            answer_d: "",
+            activate: false,
             error: null,
-            wsUri: props.wsUri
+            status: null,
+            host: props.host
         }
 
-        // this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
+        this.changeTitle = this.changeTitle.bind(this);
+        this.changeAnswerA = this.changeAnswerA.bind(this);
+        this.changeAnswerB = this.changeAnswerB.bind(this);
+        this.changeAnswerC = this.changeAnswerC.bind(this);
+        this.changeAnswerD = this.changeAnswerD.bind(this);
     }
 
-    async handleSubmit(name) {
-        const data = {
-            username: name,
-            password: "No password"
+    async componentDidMount() {
+        const url = this.state.host + "/question"
+        try {
+            const result = await axios.get(url);
+            console.log("Success: ", result);
+
+            let newState = this.state;
+            newState.question_id = result.data.id;
+            newState.title = result.data.title;
+            newState.answer_a = result.data.answer_a;
+            newState.answer_b = result.data.answer_b;
+            newState.answer_c = result.data.answer_c;
+            newState.answer_d = result.data.answer_d;
+            this.setState(newState)
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    async handleSubmit(event) {
+        event.preventDefault();
+
+        const questionData = {
+            title: this.state.title,
+            answer_a: this.state.answer_a,
+            answer_b: this.state.answer_b,
+            answer_c: this.state.answer_c,
+            answer_d: this.state.answer_d,
+            activateNow: this.state.activate
         }
 
-        // const requestOptions = {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify({ name: this.state.value })
-        // }
-
         try {
-            const result = await axios.post('http://localhost:8080/register', JSON.stringify(data))
+            const result = await axios.post(this.state.host + "/question", JSON.stringify(questionData))
             const newState = this.state;
             newState.error = null;
             newState.token = result.data.access_token;
             this.setState(newState);
-
-            console.log("Logged in with access token: ", newState.token);
-
-            // Logged in, now connect to websocket
-            console.log("Connecting with websocket:", this.state.wsUri);
-            this.socket = new WebSocket(this.state.wsUri);
-            this.socket.onopen = this.onSocketOpen.bind(this);
-            this.socket.onclose = this.onSocketClose.bind(this);
-            this.socket.onerror = this.onSocketError.bind(this);
-            this.socket.onmessage = this.onSocketMessage.bind(this);
-
         }
         catch (err) {
             let prevState = this.state;
@@ -60,38 +78,34 @@ class QuizMaster extends React.Component {
         // this.setState({redirect: "Question.js"});
     }
 
-    onSocketOpen(evt) {
-        console.log("Connection opened");
+    changeTitle(evt) {
+        let newState = this.state;
+        newState.title = evt.target.value;
+        this.setState(newState);
     }
 
-    onSocketMessage(evt) {
-        // const json = JSON.parse(evt.data);
-        console.log(`[message] Data received from server: ${evt.data}`);
-
-        // try {
-        //   if ((json.event = "data")) {
-        //     console.log(json.data);
-        //   }
-        // } catch (err) {
-        //   console.err(err);
-        // }
+    changeAnswerA(evt) {
+        let newState = this.state;
+        newState.answer_a = evt.target.value;
+        this.setState(newState);
     }
 
-    onSocketError(evt) {
-        console.error(evt);
+    changeAnswerB(evt) {
+        let newState = this.state;
+        newState.answer_b = evt.target.value;
+        this.setState(newState);
     }
 
-    onSocketClose(evt) {
-        console.log("Connection closed");
+    changeAnswerC(evt) {
+        let newState = this.state;
+        newState.answer_c = evt.target.value;
+        this.setState(newState);
+    }
 
-        if (evt.code !== 1000) {
-            // Connection is not closed normally
-            if (!navigator.onLine) {
-                let prevState = this.state;
-                prevState.errorMessage = "Je bent offline. Verbind a.u.b. opnieuw met het internet";
-                this.setState(prevState);
-            }
-        }
+    changeAnswerD(evt) {
+        let newState = this.state;
+        newState.answer_d = evt.target.value;
+        this.setState(newState);
     }
 
     render() {
@@ -105,11 +119,84 @@ class QuizMaster extends React.Component {
         return (
             <div className="App">
                 <header className="App-header">
-                    <p>Quiz master</p>
+            <Tabs>
+              <TabList>
+                <Tab>Nieuwe vraag</Tab>
+                <Tab>Huidige vraag</Tab>
+              </TabList>
+          
+              <TabPanel>
+                    <form onSubmit={this.handleSubmit}>
+                        
+                            <span className="textheader">Quizvraag: </span>
+                            <input type="text" id="title"
+                                onChange={this.changeTitle}
+                                placeholder="Wat wordt de vraag?"
+                                value={this.state.title} />
+                        
+
+                        <span className="textheader">Antwoordmogelijkheden:</span>
+
+                        <input type="text" id="answer_a"
+                            onChange={this.changeAnswerA}
+                            placeholder="Antwoord A?"
+                            value={this.state.answer_a} />
+                        
+
+                        <input type="text" 
+                            onChange={this.changeAnswerB}
+                            placeholder="Antwoord B?"
+                            value={this.state.answer_b} />
+
+                        <input type="text" 
+                            onChange={this.changeAnswerC}
+                            placeholder="Antwoord C?"
+                            value={this.state.answer_c} />                        
+
+                        <input type="text"
+                            onChange={this.changeAnswerD}
+                            placeholder="Antwoord D?"
+                            value={this.state.answer_d} />
+
+                        <button>Activeer</button>
+                    </form>
+                    
+                    <span>{this.state.status}</span>
                     <span>{this.state.error}</span>
-                </header>
+              </TabPanel>
+              <TabPanel>
+                <div>
+                    <h3>{this.state.title}</h3>
+                </div>
+                <div>
+                    <div>
+                        <span>{this.state.answer_a} </span>
+                        <span>100</span>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <span>{this.state.answer_b} </span>
+                        <span>100</span>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <span>{this.state.answer_c} </span>
+                        <span>100</span>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <span>{this.state.answer_d} </span>
+                        <span>100</span>
+                    </div>
+                </div>
+              </TabPanel>
+            </Tabs>
+            </header>
             </div>
-        )
+        );
     }
 }
 

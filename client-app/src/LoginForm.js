@@ -5,7 +5,7 @@ import React from "react"
 class LoginForm extends React.Component {
     constructor(props) {
         super(props);
-        this.state = {value: '', onSubmit: props.onSubmit}
+        this.state = {value: '', register: props.register, onSubmit: props.onSubmit}
 
         this.handleChange = this.handleChange.bind(this);
         this.handleSubmit = this.handleSubmit.bind(this);
@@ -32,6 +32,12 @@ class LoginForm extends React.Component {
             type="text"
             placeholder="Wat is uw naam?"
             value={this.state.value} />
+
+            {this.state.register && <input onChange={this.handlePasswordChange}
+              type="password"
+              placeholder="Wat is uw wachtwoord?"
+              value={this.state.password}
+            />}
 
            <button type="submit">Speel mee</button>
         </form>

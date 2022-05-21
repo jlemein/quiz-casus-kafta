@@ -27,6 +27,16 @@
   .App-link {
     color: #61dafb;
   }
+
+  .textheader {
+    margin: 5px auto;
+  }
+  
+  .inputrow {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
   
   form {
     display: flex;
@@ -41,6 +51,7 @@
     border-radius: 3px;
     padding: 10px 15px;
     margin-bottom: 10px;
+    margin-left: 10px;
     display: block;
     text-align: center;
     font-size: 18px;

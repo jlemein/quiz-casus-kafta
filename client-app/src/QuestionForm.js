@@ -1,72 +1,49 @@
-import logo from './logo.svg';
 import './QuestionForm.css';
 import React from "react"
-// import kafka from 'kafka-node'
-
-// class MessageDisplay extends React.Component {
-
-//   getInitialState() {
-//     return { messages: [] };
-//   }
-
-//   onComponentDidMount() {
-//     client = new kafka.KafkaClient();
-//     consumer = new kafka.Consumer();
-//     producer = new kafka.Producer();
-
-//     consumer.on('message', function (message) {
-//       var messageList = this.state.messages;
-//       messageList.push(message);
-//       this.setState({ message: messageList });
-//     }).bind(this);
-//   }
-
-//   onComponentWillUnmount() {
-
-//   }
-
-//   render() {
-//     var messageList = this.state.messages.map(function (message) {
-//       return (<div>id={message.id} etc.</div>);
-//     });
-//     return (
-//       <div className="commentBox">
-//         {messageList}
-//       </div>
-//     );
-//   }
-// }
 
 
 class QuestionForm extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { value: '', user: props.user, wsUri: "ws://localhost:8080/ws" };
 
-    this.submitAnswer = this.submitAnswer.bind(this);
+    console.log(props.question)
+    this.state = props.data;
+
+    this.submitVote = props.submitVote;
+    this.logout = props.logout;
   }
 
-  submitAnswer(answer) {
-    console.log("An answer was submitted: " + answer)
-    this.socket.send({user: this.state.user, value: answer});
-
-    // this.setState({redirect: "Question.js"});
-  }
+  // getInitialState() {
+  //   this.state = {
+  //     value: '', 
+  //     user: null, 
+  //     question: {
+  //       id: 0,
+  //       title: "Waiting for question",
+  //       answer_a: "A",
+  //       answer_b: "B",
+  //       answer_c: "C",
+  //       answer_d: "D",
+  //     },
+  //     wsUri: "ws://localhost:8080/ws"
+  //   }
+  // }
 
   render() {
     return (
       <div>
           <p>Hallo {this.state.user}</p>
           <div className="answers">
-            <p>Wie is de oudste persoon op aarde?</p>
-            <button className="answer1" onClick={() => this.submitAnswer("A")}>Tarzan</button>
-            <button className="answer2" onClick={() => this.submitAnswer("B")}>Tarzan</button>
-            <button className="answer3" onClick={() => this.submitAnswer("C")}>Tarzan</button>
-            <button className="answer4" onClick={() => this.submitAnswer("D")}>Tarzan</button>
+            <p>{this.state.question_title}</p>
+            <button className="answer1" onClick={() => this.submitVote(0)}>{this.state.question_answer_a}</button>
+            <button className="answer2" onClick={() => this.submitVote(1)}>{this.state.question_answer_b}</button>
+            <button className="answer3" onClick={() => this.submitVote(2)}>{this.state.question_answer_c}</button>
+            <button className="answer4" onClick={() => this.submitVote(3)}>{this.state.question_answer_d}</button>
           </div>
           <button onClick={() => this.checkStatus()}>Controleer verbinding</button>
 
           <p>Vraag verloopt over 5 seconden</p>
+          <button onClick={this.logout}>Uitloggen</button>
       </div>
     );
   }
