@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"time"
 
@@ -113,14 +112,14 @@ func main() {
 	r.Handle("/view", ViewHandler)    // websocket
 
 	// find local ip address
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer conn.Close()
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	// conn, err := net.Dial("udp", "8.8.8.8:80")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// defer conn.Close()
+	// localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	log.Printf("Server is running on %s:%d\n", localAddr.IP, 8080)
+	log.Printf("Server is running on %s:%d\n", "localhost", 8080)
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
