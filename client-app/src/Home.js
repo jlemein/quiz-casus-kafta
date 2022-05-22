@@ -66,7 +66,7 @@ class Home extends React.Component {
 
   async submitVote (answer) {
       try {
-        const vote = {user: this.state.user, question_id: -1, vote: answer};
+        const vote = {user: this.state.user, question_id: this.state.question_id, vote: answer};
         console.log("Submitting vote", vote);
         await this.socket.send(JSON.stringify(vote));
         console.log("Vote submitted")
@@ -83,7 +83,7 @@ class Home extends React.Component {
     const result = JSON.parse(evt.data);
     console.log("Message: ", result)
 
-    let prevState = this.state;
+    let prevState = this.state;// JSON.parse(JSON.stringify(this.state));
     prevState.question_id = result.id;
     prevState.question_title = result.title;
     prevState.question_answer_a = result.answer_a;
@@ -93,16 +93,8 @@ class Home extends React.Component {
     this.setState(prevState);
 
     console.log("Setting state:", prevState)
-    // this.setState(prevState)
 
-
-    // try {
-    //   if ((json.event = "data")) {
-    //     console.log(json.data);
-    //   }
-    // } catch (err) {
-    //   console.err(err);
-    // }
+    console.log("New question title:", this.state.question_title)
   }
 
   onSocketError(evt) {
@@ -126,12 +118,11 @@ class Home extends React.Component {
     console.log("Logout")
     localStorage.removeItem('quiz_token', null);
     this.setState({access_token: null});
+    this.socket.close()
   }
 
   render() {
     let el;
-
-    console.log("user:", this.state.user)
 
     if (this.state.access_token) {
       el = (<QuestionForm data={this.state}
@@ -156,7 +147,6 @@ class Home extends React.Component {
 
     return (
       <div className="App">
-        <span>Code: {this.state.question_title}</span>
         <header className="App-header">
           {el}
           <span>{this.state.error}</span>

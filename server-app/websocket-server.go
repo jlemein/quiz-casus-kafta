@@ -18,6 +18,7 @@ import (
 
 var db *sql.DB
 var questionProducer *kafka.Producer
+var voteProducer *kafka.Producer
 
 const (
 	host     = "localhost"
@@ -92,29 +93,31 @@ func connectWithDatabase() {
 func main() {
 	log.Println("Starting quiz server")
 
-	StartProducer()
+	// start the vote and question producers
+	StartProducers()
 	defer questionProducer.Close()
-	log.Println("Question producer running")
+	defer voteProducer.Close()
 
+	// database connection
 	fmt.Println("Connecting with database...")
 	connectWithDatabase()
 	defer db.Close()
 	fmt.Println("Successfully connected with database.")
 
+	// setup end point routes
 	r := mux.NewRouter()
-	r.Handle("/", http.FileServer(http.Dir("./views/")))
 	r.Handle("/register", Register).Methods("POST", "OPTIONS")
 	r.Handle("/status", StatusHandler)
-	r.Handle("/ws", WebSocketHandler)
 	r.Handle("/question", QuestionHandler).Methods("POST", "GET", "OPTIONS")
-	r.Handle("/view", ViewHandler)
+	r.Handle("/ws", WebSocketHandler) // websocket
+	r.Handle("/view", ViewHandler)    // websocket
 
+	// find local ip address
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
 	fmt.Printf("Server is running on %s:%d\n", localAddr.IP, 8080)
@@ -127,12 +130,19 @@ func writeCorsHeaders(w *http.ResponseWriter, req *http.Request) {
 	(*w).Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 }
 
-func StartProducer() {
+func StartProducers() {
 	var err error
 	questionProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
 	if err != nil {
 		panic(err)
 	}
+	log.Println("Question producer running")
+
+	voteProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Vote producer running")
 }
 
 var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -173,8 +183,19 @@ var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 		fmt.Printf("Question asked: %s\n\tA: %s\n\tB: %s\n\tC: %s\n\tD: %s\n", question.Title, question.AnswerA, question.AnswerB, question.AnswerC, question.AnswerD)
 
 		// Add new question to database
-		sqlStatement := "INSERT INTO questions (title, answer_a, answer_b, answer_c, answer_d) VALUES ($1, $2, $3, $4, $5)"
+		sqlStatement := "INSERT INTO questions (title, answer_a, answer_b, answer_c, answer_d) VALUES ($1, $2, $3, $4, $5);"
 		_, err := db.Exec(sqlStatement, question.Title, question.AnswerA, question.AnswerB, question.AnswerC, question.AnswerD)
+
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Println(err)
+		}
+
+		sqlStatement = "SELECT * FROM public.questions ORDER BY id DESC LIMIT 1"
+		row := db.QueryRow(sqlStatement)
+		err = row.Scan(&question.Id, &question.Title, &question.AnswerA, &question.AnswerB, &question.AnswerC, &question.AnswerD)
+
+		log.Println("Question id: ", question.Id)
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -278,20 +299,66 @@ var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request
 	w.Write([]byte("API is up and running"))
 })
 
-func HandleVotes(conn *websocket.Conn) {
+func HandleVotes(w http.ResponseWriter, conn *websocket.Conn) {
 	var vote Vote
 	// The event loop
 	for {
-		messageType, message, err := conn.ReadMessage()
+		messageType, voteMessage, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("Error during message reading: ", err)
 			break
 		}
 
-		json.Unmarshal(message, &vote)
+		json.Unmarshal(voteMessage, &vote)
 		log.Printf("-- %s voted %d\n", vote.User, vote.Vote)
 
-		err = conn.WriteMessage(messageType, message)
+		// publish vote into database
+		sqlStatement := "INSERT INTO votes (username, question_id, vote) VALUES ($1, $2, $3)"
+		_, err = db.Exec(sqlStatement, vote.User, vote.QuestionId, vote.Vote)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Failed to store vote in database"))
+			fmt.Println(err)
+		}
+
+		// publish message to topic
+		// Delivery report handler for produced messages
+		go func() {
+			for e := range voteProducer.Events() {
+				switch ev := e.(type) {
+				case *kafka.Message:
+					if ev.TopicPartition.Error != nil {
+						fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+					} else {
+						fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+					}
+				}
+			}
+		}()
+
+		// Produce messages to topic (asynchronously)
+		topic := "myserver.public.votes"
+
+		// q := Question{10, "Wat is uw favoriete kleur?", "Blauw", "Rood", "Wit", "Groen", true}
+		// msg, err := json.Marshal(vote)
+
+		if err != nil {
+			log.Println(err)
+		}
+
+		// for _, word := range []string{"Welcome", "to", "the", "Confluent", "Kafka", "Golang", "client"} {
+		voteProducer.Produce(&kafka.Message{
+			TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: kafka.PartitionAny},
+			Value:          []byte(voteMessage),
+		}, nil)
+		// }
+
+		// Wait for message deliveries before shutting down
+		voteProducer.Flush(15 * 1000)
+
+		w.WriteHeader(http.StatusOK)
+
+		err = conn.WriteMessage(messageType, voteMessage)
 		if err != nil {
 			log.Println("Error during message writing:", err)
 			break
@@ -312,15 +379,10 @@ var WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 	// helpful log statement to show connections
 	log.Println("Client Connected")
 
-	// err = conn.WriteMessage(1, []byte("Hi Client!"))
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-
 	consumer := createConsumer("myserver.public.questions")
 	defer consumer.Close()
 
-	go HandleVotes(conn)
+	go HandleVotes(w, conn)
 
 	// Event loop waiting for topics
 	for {
@@ -328,13 +390,8 @@ var WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 		if err == nil {
 			fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 
-			// messageType, _, err := conn.NextReader()
-			// if err != nil {
-			// 	return
-			// }
-
 			fmt.Println("Write message to websocket: %s", msg.Value)
-			// err = conn.WriteMessage(1, []byte("Something received!"))
+
 			err = conn.WriteMessage(1, []byte(msg.Value))
 			if err != nil {
 				log.Println("Error during sending question via websocket")
@@ -344,6 +401,8 @@ var WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 			fmt.Printf("Consumer error: %v (%v)\n", err, msg)
 		}
 	}
+
+	log.Println("Client disconnected")
 
 	// c.Close()
 
@@ -362,11 +421,6 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	// helpful log statement to show connections
 	log.Println("Client Connected")
 
-	// err = conn.WriteMessage(1, []byte("Hi Client!"))
-	// if err != nil {
-	// 	log.Println(err)
-	// }
-
 	consumer := createConsumer("votes")
 	defer consumer.Close()
 
@@ -376,13 +430,8 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 		if err == nil {
 			fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 
-			// messageType, _, err := conn.NextReader()
-			// if err != nil {
-			// 	return
-			// }
-
 			fmt.Println("Write message to websocket: %s", msg.Value)
-			// err = conn.WriteMessage(1, []byte("Something received!"))
+
 			err = conn.WriteMessage(1, []byte(msg.Value))
 			if err != nil {
 				log.Println("Error during sending question via websocket")
@@ -392,24 +441,6 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 			fmt.Printf("Consumer error: %v (%v)\n", err, msg)
 		}
 	}
-
-	// c.Close()
-
-	// // The event loop
-	// for {
-	// 	messageType, message, err := conn.ReadMessage()
-	// 	if err != nil {
-	// 		log.Println("Error during message reading: ", err)
-	// 		break
-	// 	}
-	// 	log.Printf("Received: %s", message)
-
-	// 	err = conn.WriteMessage(messageType, message)
-	// 	if err != nil {
-	// 		log.Println("Error during message writing:", err)
-	// 		break
-	// 	}
-	// }
 })
 
 func createConsumer(topic string) *kafka.Consumer {
@@ -427,27 +458,4 @@ func createConsumer(topic string) *kafka.Consumer {
 	c.SubscribeTopics([]string{topic}, nil)
 
 	return c
-
-	// for {
-	// 	msg, err := c.ReadMessage(-1)
-	// 	if err == nil {
-	// 		fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
-	// 		err = conn.WriteMessage(msg)
-	// 		if err != nil {
-	// 			log.Println("Error during sending question via websocket")
-	// 		}
-	// 	} else {
-	// 		// The client will automatically try to recover from all errors.
-	// 		fmt.Printf("Consumer error: %v (%v)\n", err, msg)
-	// 	}
-	// }
-
-	// c.Close()
-
-	// // create a new context
-	// ctx := context.Background()
-	// // produce messages in a new go routine, since
-	// // both the produce and consume functions are
-	// // blocking
-	// consume(ctx)
 }

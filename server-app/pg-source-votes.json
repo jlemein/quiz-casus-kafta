@@ -1,5 +1,5 @@
 {
-    "name": "pg-orders-source",
+    "name": "pg-votes-source",
     "config": {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
         "database.hostname": "postgres",
@@ -9,7 +9,7 @@
         "database.dbname": "postgres",
         "database.server.name": "myserver",
         "plugin.name": "wal2json",
-        "table.include.list": "public.customers",
+        "table.include.list": "public.votes",
         "value.converter": "org.apache.kafka.connect.json.JsonConverter"
     }
 }

@@ -13,39 +13,33 @@ class QuestionForm extends React.Component {
     this.logout = props.logout;
   }
 
-  // getInitialState() {
-  //   this.state = {
-  //     value: '', 
-  //     user: null, 
-  //     question: {
-  //       id: 0,
-  //       title: "Waiting for question",
-  //       answer_a: "A",
-  //       answer_b: "B",
-  //       answer_c: "C",
-  //       answer_d: "D",
-  //     },
-  //     wsUri: "ws://localhost:8080/ws"
-  //   }
-  // }
+  componentWillReceiveProps(nextProps, nextContext) {
+    this.setState(nextProps.data);
+  }
 
   render() {
-    return (
-      <div>
-          <p>Hallo {this.state.user}</p>
-          <div className="answers">
-            <p>{this.state.question_title}</p>
-            <button className="answer1" onClick={() => this.submitVote(0)}>{this.state.question_answer_a}</button>
-            <button className="answer2" onClick={() => this.submitVote(1)}>{this.state.question_answer_b}</button>
-            <button className="answer3" onClick={() => this.submitVote(2)}>{this.state.question_answer_c}</button>
-            <button className="answer4" onClick={() => this.submitVote(3)}>{this.state.question_answer_d}</button>
-          </div>
-          <button onClick={() => this.checkStatus()}>Controleer verbinding</button>
+    if (this.state.question_id) {
+      return (
+        <div>
+            <p>Hallo {this.state.user}</p>
+            <div className="answers">
+              <p>{this.state.question_title}</p>
+              <button className="answer1" onClick={() => this.submitVote(0)}>{this.state.question_answer_a}</button>
+              <button className="answer2" onClick={() => this.submitVote(1)}>{this.state.question_answer_b}</button>
+              <button className="answer3" onClick={() => this.submitVote(2)}>{this.state.question_answer_c}</button>
+              <button className="answer4" onClick={() => this.submitVote(3)}>{this.state.question_answer_d}</button>
+            </div>
 
-          <p>Vraag verloopt over 5 seconden</p>
-          <button onClick={this.logout}>Uitloggen</button>
-      </div>
-    );
+            <button onClick={this.logout}>Uitloggen</button>
+        </div>);
+    } else {
+      return (
+        <div>
+            <p>Hallo {this.state.user}</p>
+            <p>Wacht a.u.b. op de volgende vraag</p>
+            <button onClick={this.logout}>Uitloggen</button>
+        </div>);
+    }
   }
 }
 

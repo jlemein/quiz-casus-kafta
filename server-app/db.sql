@@ -23,5 +23,15 @@ CREATE TABLE IF NOT EXISTS public.questions
 
 TABLESPACE pg_default;
 
+CREATE TABLE IF NOT EXISTS public.votes
+(
+    id SERIAL PRIMARY KEY,
+    username character varying(256) NOT NULL, -- references public.registered_users(name),
+    question_id INTEGER NOT NULL references public.questions(id),
+    vote numeric NOT NULL
+)
+
+TABLESPACE pg_default;
+
 ALTER TABLE IF EXISTS public.registered_users
     OWNER to jlemein;

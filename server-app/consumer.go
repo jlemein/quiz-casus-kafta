@@ -3,22 +3,31 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	_ "github.com/lib/pq"
 )
 
-// the topic and broker address are initialized as constants
-const (
-	topic          = "myserver.public.questions"
-	broker1Address = "localhost:9092" //"3"
-	broker2Address = "localhost:9094"
-	broker3Address = "localhost:9095"
-)
+// // the topic and broker address are initialized as constants
+// const (
+// 	topic          = "myserver.public.votes"
+// 	broker1Address = "localhost:9092" //"3"
+// 	broker2Address = "localhost:9094"
+// 	broker3Address = "localhost:9095"
+// )
 
 var db *sql.DB
 
 func main() {
+	if len(os.Args) < 2 {
+		log.Fatal("Provide topic name as command line argument")
+	}
+
+	topic := os.Args[1]
+	fmt.Println("Setting up consumer for topic: ", topic)
+
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":    "localhost",
 		"group.id":             "myGroup",
@@ -30,7 +39,7 @@ func main() {
 		panic(err)
 	}
 
-	c.SubscribeTopics([]string{"myserver.public.questions"}, nil)
+	c.SubscribeTopics([]string{topic}, nil)
 
 	for {
 		msg, err := c.ReadMessage(-1)
