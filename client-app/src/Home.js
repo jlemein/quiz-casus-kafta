@@ -13,7 +13,7 @@ class Home extends React.Component {
 
     this.state = {
       value: '',
-      user: null,
+      user: localStorage.getItem('user'),
       access_token: localStorage.getItem('quiz_token'),
       error: null,
       wsUri: props.wsUri,
@@ -29,6 +29,18 @@ class Home extends React.Component {
     this.handleSubmit = this.handleSubmit.bind(this);
     this.logout = this.logout.bind(this);
     this.submitVote = this.submitVote.bind(this);
+
+    if (this.state.access_token) {
+      this.openWebsocketConnection()
+    }
+  }
+
+  openWebsocketConnection() {
+    this.socket = new WebSocket(this.state.wsUri);
+      this.socket.onopen = this.onSocketOpen.bind(this);
+      this.socket.onclose = this.onSocketClose.bind(this);
+      this.socket.onerror = this.onSocketError.bind(this);
+      this.socket.onmessage = this.onSocketMessage.bind(this);
   }
 
   async handleSubmit(name) {
@@ -47,14 +59,11 @@ class Home extends React.Component {
 
       console.log("Logged in with access token: ", newState.access_token);
       localStorage.setItem('quiz_token', newState.access_token);
+      localStorage.setItem('user', newState.user)
 
       // Logged in, now connect to websocket
       console.log("Connecting with websocket:", this.state.wsUri);
-      this.socket = new WebSocket(this.state.wsUri);
-      this.socket.onopen = this.onSocketOpen.bind(this);
-      this.socket.onclose = this.onSocketClose.bind(this);
-      this.socket.onerror = this.onSocketError.bind(this);
-      this.socket.onmessage = this.onSocketMessage.bind(this);
+      this.openWebsocketConnection()
     }
     catch (err) {
       let prevState = this.state;
@@ -116,8 +125,10 @@ class Home extends React.Component {
 
   logout() {
     console.log("Logout")
-    localStorage.removeItem('quiz_token', null);
+    // axios.post("/logout")
+    localStorage.clear()
     this.setState({access_token: null});
+    window.location.href = "/";
     this.socket.close()
   }
 

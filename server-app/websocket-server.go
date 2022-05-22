@@ -120,7 +120,7 @@ func main() {
 	defer conn.Close()
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	fmt.Printf("Server is running on %s:%d\n", localAddr.IP, 8080)
+	log.Printf("Server is running on %s:%d\n", localAddr.IP, 8080)
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
@@ -146,7 +146,7 @@ func StartProducers() {
 }
 
 var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-	fmt.Printf("/question called:\n")
+	log.Printf("/question called:\n")
 
 	// make sure the headers are written before body is written
 	writeCorsHeaders(&w, req)
@@ -180,8 +180,6 @@ var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 			return
 		}
 
-		fmt.Printf("Question asked: %s\n\tA: %s\n\tB: %s\n\tC: %s\n\tD: %s\n", question.Title, question.AnswerA, question.AnswerB, question.AnswerC, question.AnswerD)
-
 		// Add new question to database
 		sqlStatement := "INSERT INTO questions (title, answer_a, answer_b, answer_c, answer_d) VALUES ($1, $2, $3, $4, $5);"
 		_, err := db.Exec(sqlStatement, question.Title, question.AnswerA, question.AnswerB, question.AnswerC, question.AnswerD)
@@ -195,7 +193,8 @@ var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 		row := db.QueryRow(sqlStatement)
 		err = row.Scan(&question.Id, &question.Title, &question.AnswerA, &question.AnswerB, &question.AnswerC, &question.AnswerD)
 
-		log.Println("Question id: ", question.Id)
+		log.Println("POST /question, id: ", question.Id)
+		log.Printf("Question asked: %s\n\tA: %s\n\tB: %s\n\tC: %s\n\tD: %s\n", question.Title, question.AnswerA, question.AnswerB, question.AnswerC, question.AnswerD)
 
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -208,9 +207,9 @@ var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 				switch ev := e.(type) {
 				case *kafka.Message:
 					if ev.TopicPartition.Error != nil {
-						fmt.Printf("Delivery failed: %v\n", ev.TopicPartition)
+						log.Printf("Delivery failed: %v\n", ev.TopicPartition)
 					} else {
-						fmt.Printf("Delivered message to %v\n", ev.TopicPartition)
+						log.Printf("Delivered message to %v\n", ev.TopicPartition)
 					}
 				}
 			}
@@ -237,6 +236,7 @@ var QuestionHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 		questionProducer.Flush(15 * 1000)
 
 		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(question)
 		return
 	}
 })
@@ -395,6 +395,7 @@ var WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 			err = conn.WriteMessage(1, []byte(msg.Value))
 			if err != nil {
 				log.Println("Error during sending question via websocket")
+				break
 			}
 		} else {
 			// The client will automatically try to recover from all errors.
@@ -421,7 +422,7 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 	// helpful log statement to show connections
 	log.Println("Client Connected")
 
-	consumer := createConsumer("votes")
+	consumer := createConsumer("myserver.public.votes")
 	defer consumer.Close()
 
 	// Event loop waiting for topics
@@ -449,6 +450,7 @@ func createConsumer(topic string) *kafka.Consumer {
 		"group.id":             "myGroup",
 		"auto.offset.reset":    "earliest",
 		"max.poll.interval.ms": 60000,
+		"enable.auto.commit":   true,
 	})
 
 	if err != nil {

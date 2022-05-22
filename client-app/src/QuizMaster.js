@@ -5,6 +5,7 @@ import LoginForm from "./LoginForm"
 import QuestionForm from "./QuestionForm"
 import axios from 'axios';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+// import { BarChart } from './BarChart'
 
 class QuizMaster extends React.Component {
     constructor(props) {
@@ -19,7 +20,19 @@ class QuizMaster extends React.Component {
             activate: false,
             error: null,
             status: null,
-            host: props.host
+            host: props.host,
+
+            current_question: {
+                title: "",
+                answer_a: "",
+                answer_b: "",
+                answer_c: "",
+                answer_d: "",
+                votes_a: 0,
+                votes_b: 0,
+                votes_c: 0,
+                votes_d: 0
+            }
         }
 
         this.handleSubmit = this.handleSubmit.bind(this);
@@ -30,19 +43,36 @@ class QuizMaster extends React.Component {
         this.changeAnswerD = this.changeAnswerD.bind(this);
     }
 
+    parseQuestionData(result) {
+        return {
+            id: result.data.id,
+            title: result.data.title,
+            answer_a: result.data.answer_a,
+            answer_b: result.data.answer_b,
+            answer_c: result.data.answer_c,
+            answer_d: result.data.answer_d,
+            votes_a:  0,
+            votes_b:  0,
+            votes_c:  0,
+            votes_d:  0,
+        }
+    }
+
     async componentDidMount() {
+        this.ws = new WebSocket("ws://localhost:8080/view");
+        this.ws.onopen = this.onSocketOpen.bind(this);
+        this.ws.onclose = this.onSocketClose.bind(this);
+        this.ws.onerror = this.onSocketError.bind(this);
+        this.ws.onmessage = this.onSocketMessage.bind(this);
+        
         const url = this.state.host + "/question"
         try {
-            const result = await axios.get(url);
-            console.log("Success: ", result);
-
+            const currentQuestionResult = await axios.get(url);
+            console.log("Received current question: ", currentQuestionResult);
+            console.log("GET - question id: ", currentQuestionResult.data.id)
+            
             let newState = this.state;
-            newState.question_id = result.data.id;
-            newState.title = result.data.title;
-            newState.answer_a = result.data.answer_a;
-            newState.answer_b = result.data.answer_b;
-            newState.answer_c = result.data.answer_c;
-            newState.answer_d = result.data.answer_d;
+            newState.current_question = this.parseQuestionData(currentQuestionResult);
             this.setState(newState)
         } catch (err) {
             console.error(err);
@@ -53,6 +83,7 @@ class QuizMaster extends React.Component {
         event.preventDefault();
 
         const questionData = {
+            id: -1,
             title: this.state.title,
             answer_a: this.state.answer_a,
             answer_b: this.state.answer_b,
@@ -63,9 +94,12 @@ class QuizMaster extends React.Component {
 
         try {
             const result = await axios.post(this.state.host + "/question", JSON.stringify(questionData))
-            const newState = this.state;
+
+            let newState = this.state;
+            newState.current_question = this.parseQuestionData(result);
+            console.log("Received new question:", newState);
+            console.log("POST - question id: ", newState.current_question.id)
             newState.error = null;
-            newState.token = result.data.access_token;
             this.setState(newState);
         }
         catch (err) {
@@ -78,6 +112,47 @@ class QuizMaster extends React.Component {
         // this.setState({redirect: "Question.js"});
     }
 
+
+    onSocketOpen(evt) {
+        console.log("Connected with websocket: listening for votes");
+    }
+
+    onSocketClose(evt) {
+        console.log("Websocket closed");
+    }
+
+    onSocketError(evt) {
+        console.error(evt);
+    }
+
+    onSocketMessage(evt) {
+        const result = JSON.parse(evt.data);
+        console.log("Received vote: ", result)
+
+        console.log("Current Question ID: ", this.state.current_question.id)
+
+        if (this.state.current_question.id == result.question_id) {
+            let newState = this.state;
+
+            if (result.vote == 0) {
+                newState.current_question.votes_a += 1;
+            }
+            if (result.vote == 1) {
+                newState.current_question.votes_b += 1;
+            }
+            if (result.vote == 2) {
+                newState.current_question.votes_c += 1;
+            }
+            if (result.vote == 3) {
+                newState.current_question.votes_d += 1;
+            }
+
+            this.setState(newState);
+        } else {
+            console.log("Received vote for wrong question. Current id: ", this.state.current_question.id, "voted for question id:", result.question_id);
+        }
+      }
+    
     changeTitle(evt) {
         let newState = this.state;
         newState.title = evt.target.value;
@@ -158,7 +233,7 @@ class QuizMaster extends React.Component {
                             placeholder="Antwoord D?"
                             value={this.state.answer_d} />
 
-                        <button>Activeer</button>
+                        <button>Presenteer</button>
                     </form>
                     
                     <span>{this.state.status}</span>
@@ -166,31 +241,29 @@ class QuizMaster extends React.Component {
               </TabPanel>
               <TabPanel>
                 <div>
-                    <h3>{this.state.title}</h3>
+                    <h3>{this.state.current_question.title}</h3>
                 </div>
                 <div>
-                    <div>
-                        <span>{this.state.answer_a} </span>
-                        <span>100</span>
-                    </div>
-                </div>
-                <div>
-                    <div>
-                        <span>{this.state.answer_b} </span>
-                        <span>100</span>
-                    </div>
-                </div>
-                <div>
-                    <div>
-                        <span>{this.state.answer_c} </span>
-                        <span>100</span>
-                    </div>
-                </div>
-                <div>
-                    <div>
-                        <span>{this.state.answer_d} </span>
-                        <span>100</span>
-                    </div>
+                <table align="center">
+                    <tbody>
+                    <tr>
+                        <td width="100px">{this.state.current_question.votes_a}</td>
+                        <td>{this.state.current_question.answer_a}</td>
+                    </tr>
+                    <tr>
+                        <td>{this.state.current_question.votes_b}</td>
+                        <td>{this.state.current_question.answer_b}</td>
+                    </tr>
+                    <tr>
+                        <td>{this.state.current_question.votes_c}</td>
+                        <td>{this.state.current_question.answer_c}</td>
+                    </tr>
+                    <tr>
+                        <td>{this.state.current_question.votes_d}</td>
+                        <td>{this.state.current_question.answer_d}</td>
+                    </tr>
+                    </tbody>
+                </table>
                 </div>
               </TabPanel>
             </Tabs>
