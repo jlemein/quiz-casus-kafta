@@ -12,6 +12,10 @@ class QuestionForm extends React.Component {
     this.submitVote = props.submitVote;
     this.logout = props.logout;
   }
+  
+  componentWillReceiveProps(nextProps, nextContext) {
+    this.setState(nextProps.data);
+  }
 
   componentWillReceiveProps(nextProps, nextContext) {
     this.setState(nextProps.data);
