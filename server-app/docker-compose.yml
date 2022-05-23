@@ -16,7 +16,7 @@ services:
       - zookeeper
     environment:
       KAFKA_ADVERTISED_HOST_NAME: 104.248.85.184
-      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
+      KAFKA_HEAP_OPTS: "-Xmx250M -Xms250M"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
