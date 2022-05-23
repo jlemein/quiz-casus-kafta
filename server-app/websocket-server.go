@@ -455,9 +455,11 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 })
 
 func createConsumer(topic string) *kafka.Consumer {
+	groupid := strconv.Itoa(uniqueId)
+	log.Println("Group id for consumer: %s", groupid)
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":    host, //"localhost",
-		"group.id":             strconv.Itoa(uniqueId),
+		"group.id":             groupid,
 		"auto.offset.reset":    "earliest",
 		"max.poll.interval.ms": 60000,
 		"enable.auto.commit":   true,
