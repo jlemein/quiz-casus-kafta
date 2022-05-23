@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -19,8 +20,10 @@ var db *sql.DB
 var questionProducer *kafka.Producer
 var voteProducer *kafka.Producer
 
+var host = "localhost"
+
 const (
-	host     = "localhost"
+	// host     = "104.248.85.184" // "localhost"
 	port     = 9002
 	user     = "postgres"
 	password = "admin"
@@ -91,6 +94,12 @@ func connectWithDatabase() {
 
 func main() {
 	log.Println("Starting quiz server")
+	if len(os.Args) < 2 {
+		log.Println("Please specify host ip as first argument")
+		return
+	}
+	host = os.Args[1]
+	log.Println("Host ip is:", host)
 
 	// start the vote and question producers
 	StartProducers()
@@ -119,7 +128,7 @@ func main() {
 	// defer conn.Close()
 	// localAddr := conn.LocalAddr().(*net.UDPAddr)
 
-	log.Printf("Server is running on %s:%d\n", "localhost", 8080)
+	log.Printf("Server is running on %s:%d\n", host, 8080)
 	log.Fatal(http.ListenAndServe(":8080", r))
 }
 
@@ -137,7 +146,7 @@ func StartProducers() {
 	}
 	log.Println("Question producer running")
 
-	voteProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+	voteProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": host}) //"localhost"})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -445,7 +454,7 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 
 func createConsumer(topic string) *kafka.Consumer {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
-		"bootstrap.servers":    "localhost",
+		"bootstrap.servers":    host, //"localhost",
 		"group.id":             "myGroup",
 		"auto.offset.reset":    "earliest",
 		"max.poll.interval.ms": 60000,
