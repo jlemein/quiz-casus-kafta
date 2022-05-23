@@ -1,26 +1,5 @@
 version: '2'
 services:
-  # zookeeper:
-  #   image: confluentinc/cp-zookeeper:latest
-  #   environment:
-  #     ZOOKEEPER_CLIENT_PORT: 2181
-  #     ZOOKEEPER_TICK_TIME: 2000
-  #   ports:
-  #     - 22181:2181
-  
-  # kafka:
-  #   image: confluentinc/cp-kafka:latest
-  #   depends_on:
-  #     - zookeeper
-  #   ports:
-  #     - 29092:29092
-  #   environment:
-  #     KAFKA_BROKER_ID: 1
-  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-  #     KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
-  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-  #     KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-  #     KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   zookeeper:
     image: debezium/zookeeper:1.6
@@ -36,7 +15,8 @@ services:
     links:
       - zookeeper
     environment:
-      # KAFKA_ADVERTISED_HOST_NAME: ${HOST_IP}
+      KAFKA_ADVERTISED_HOST_NAME: 104.248.85.184
+      KAFKA_HEAP_OPTS: "-Xmx1G -Xms1G"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       KAFKA_DELETE_TOPIC_ENABLE: 'true'
@@ -48,7 +28,7 @@ services:
   # authserver:
   #   image: docker-ws-server:latest
   #   ports:
-  #     - 9000:8080
+  #     - 8080:8080
 
   postgres:
     image: postgres:14.3
@@ -61,6 +41,12 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: admin
     command: [ "postgres", "-c", "wal_level=logical" ]
+
+  # website:
+  #   image: quiz-casus:latest
+  #   restart: always
+  #   ports:
+  #     - 80:80
 
   postgres-connector:
     image: debezium/connect:1.6
