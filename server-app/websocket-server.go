@@ -23,7 +23,6 @@ var voteProducer *kafka.Producer
 
 var host = "localhost"
 var uniqueId int = 1
-var timeoutWebsocket int = 1000
 
 const (
 	// host     = "104.248.85.184" // "localhost"
@@ -397,7 +396,7 @@ var WebSocketHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Requ
 
 	// Event loop waiting for topics
 	for {
-		msg, err := consumer.ReadMessage(timeoutWebsocket)
+		msg, err := consumer.ReadMessage(-1)
 		if err == nil {
 			fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 
@@ -435,7 +434,7 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 
 	// Event loop waiting for topics
 	for {
-		msg, err := consumer.ReadMessage(timeoutWebsocket)
+		msg, err := consumer.ReadMessage(-1)
 		if err == nil {
 			fmt.Printf("Message on %s: %s\n", msg.TopicPartition, string(msg.Value))
 
