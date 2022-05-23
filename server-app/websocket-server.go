@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
@@ -21,6 +22,7 @@ var questionProducer *kafka.Producer
 var voteProducer *kafka.Producer
 
 var host = "localhost"
+var uniqueId int = 1
 
 const (
 	// host     = "104.248.85.184" // "localhost"
@@ -455,11 +457,13 @@ var ViewHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) 
 func createConsumer(topic string) *kafka.Consumer {
 	c, err := kafka.NewConsumer(&kafka.ConfigMap{
 		"bootstrap.servers":    host, //"localhost",
-		"group.id":             "myGroup",
+		"group.id":             strconv.Itoa(uniqueId),
 		"auto.offset.reset":    "earliest",
 		"max.poll.interval.ms": 60000,
 		"enable.auto.commit":   true,
 	})
+
+	uniqueId++
 
 	if err != nil {
 		panic(err)
