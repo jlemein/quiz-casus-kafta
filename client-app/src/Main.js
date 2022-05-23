@@ -9,13 +9,13 @@ class Main extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            host: "http://localhost:8080"
+            host: process.env.REACT_APP_HTTP_API_URL
         }
     }
     render() {
         return (
             <Routes> {/* The Switch decides which component to show based on the current URL.*/}
-                <Route exact path='/' element={<Home wsUri="ws://localhost:8080/ws" />}></Route>
+                <Route exact path='/' element={<Home wsUri={process.env.REACT_APP_WS_API_URL + "/ws"} />}></Route>
                 <Route exact path='/quizmaster' element={<QuizMaster host={this.state.host} />}></Route>
             </Routes>
         );

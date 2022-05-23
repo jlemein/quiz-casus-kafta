@@ -59,7 +59,7 @@ class QuizMaster extends React.Component {
     }
 
     async componentDidMount() {
-        this.ws = new WebSocket("ws://localhost:8080/view");
+        this.ws = new WebSocket(process.env.REACT_APP_WS_API_URL + "/view");
         this.ws.onopen = this.onSocketOpen.bind(this);
         this.ws.onclose = this.onSocketClose.bind(this);
         this.ws.onerror = this.onSocketError.bind(this);

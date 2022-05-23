@@ -50,8 +50,8 @@ class Home extends React.Component {
     }
 
     try {
-      console.log("Backend: ", process.env.BACKEND_API_URL)
-      const result = await axios.post(process.env.BACKEND_API_URL + '/register', JSON.stringify(data))
+      console.log("Backend: ", process.env.REACT_APP_HTTP_API_URL)
+      const result = await axios.post(process.env.REACT_APP_HTTP_API_URL + '/register', JSON.stringify(data))
       const newState = this.state;
       newState.error = null;
       newState.access_token = result.data.access_token;
