@@ -140,7 +140,7 @@ func writeCorsHeaders(w *http.ResponseWriter, req *http.Request) {
 
 func StartProducers() {
 	var err error
-	questionProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": "localhost"})
+	questionProducer, err = kafka.NewProducer(&kafka.ConfigMap{"bootstrap.servers": host}) //"localhost"})
 	if err != nil {
 		panic(err)
 	}
