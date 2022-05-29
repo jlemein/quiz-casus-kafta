@@ -6,6 +6,7 @@ import QuestionForm from "./QuestionForm"
 import axios from 'axios';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
+import LoginRegisterForm from './LoginRegisterForm';
 
 class Home extends React.Component {
   constructor(props) {
@@ -16,7 +17,7 @@ class Home extends React.Component {
       user: localStorage.getItem('user'),
       access_token: localStorage.getItem('quiz_token'),
       error: null,
-      wsUri: props.wsUri,
+      wsUri: process.env.REACT_APP_WS_API_URL + "/ws",
       question_id: null,
       question_title: "Waiting for question",
       question_answer_a: "A",
@@ -26,7 +27,9 @@ class Home extends React.Component {
     }
 
     // this.handleChange = this.handleChange.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
+    this.onLogin = this.onLogin.bind(this);
+    this.onRegister = this.onRegister.bind(this);
+
     this.logout = this.logout.bind(this);
     this.submitVote = this.submitVote.bind(this);
 
@@ -43,23 +46,59 @@ class Home extends React.Component {
       this.socket.onmessage = this.onSocketMessage.bind(this);
   }
 
-  async handleSubmit(name) {
+  async onLogin(user) {
     const data = {
-      username: name,
-      password: "No password"
+      username: user.username,
+      password: user.password
     }
 
+    console.log("Receiving login call: ", user)
     try {
-      console.log("Backend: ", process.env.REACT_APP_HTTP_API_URL)
-      const result = await axios.post(process.env.REACT_APP_HTTP_API_URL + '/register', JSON.stringify(data))
-      const newState = this.state;
+      const result = await axios.post(process.env.REACT_APP_HTTP_API_LOGIN_URL, JSON.stringify(data))
+
+      let newState = this.state;
       newState.error = null;
       newState.access_token = result.data.access_token;
-      newState.user = name;
+      newState.user = user.username;
       this.setState(newState);
 
       console.log("Logged in with access token: ", newState.access_token);
-      localStorage.setItem('quiz_token', newState.access_token);
+      localStorage.setItem("token", result.data.access_token)
+      localStorage.setItem('user', user.username)
+    } 
+    catch(err) {
+      let prevState = this.state;
+      console.log(err)
+
+      let errorMessage = err.response.data.error;
+      prevState.error = errorMessage;
+
+      this.setState(prevState);
+    }
+
+
+  }
+
+  async onRegister(user) {
+    console.log("Receiving register call: ", user)
+
+    const data = {
+      username: user.username,
+      password: user.password
+    }
+    
+
+    try {
+      const result = await axios.post(process.env.REACT_APP_HTTP_API_REGISTER_URL, JSON.stringify(data))
+      console.log("RRR", result)
+      const newState = this.state;
+      newState.error = null;
+      newState.access_token = result.data.access_token;
+      newState.user = user.username;
+      this.setState(newState);
+
+      console.log("Logged in with access token: ", newState.access_token);
+      localStorage.setItem('token', newState.access_token);
       localStorage.setItem('user', newState.user)
 
       // Logged in, now connect to websocket
@@ -68,7 +107,11 @@ class Home extends React.Component {
     }
     catch (err) {
       let prevState = this.state;
-      prevState.error = err.message;
+      console.log(err)
+
+      let errorMessage = err.response.data.error;
+      prevState.error = errorMessage;
+
       this.setState(prevState);
       console.error(err.message);
     }
@@ -142,19 +185,7 @@ class Home extends React.Component {
                 submitVote = {this.submitVote}
               />);
     } else {
-      el = <Tabs>
-              <TabList>
-                <Tab>Login</Tab>
-                <Tab>Registreer</Tab>
-              </TabList>
-          
-              <TabPanel>
-                <LoginForm onSubmit={this.handleSubmit} register={true} />
-              </TabPanel>
-              <TabPanel>
-                <LoginForm onSubmit={this.handleSubmit} />
-              </TabPanel>
-            </Tabs>;
+      el = <LoginRegisterForm />
     }
 
     return (

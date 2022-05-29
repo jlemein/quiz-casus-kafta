@@ -20,7 +20,7 @@ class QuizMaster extends React.Component {
             activate: false,
             error: null,
             status: null,
-            host: props.host,
+            host: process.env.REACT_APP_HTTP_API_URL,
 
             current_question: {
                 title: "",

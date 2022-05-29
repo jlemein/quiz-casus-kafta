@@ -17,10 +17,6 @@ class QuestionForm extends React.Component {
     this.setState(nextProps.data);
   }
 
-  componentWillReceiveProps(nextProps, nextContext) {
-    this.setState(nextProps.data);
-  }
-
   render() {
     if (this.state.question_id) {
       return (
