@@ -25,7 +25,7 @@ export function App() {
         <Navbar.Toggle aria-controls="basic-navbar-nav" />
         <Navbar.Collapse className="justify-content-end">
     <Navbar.Text>
-      {authenticated ? "Ingelogd:" : "Niet ingelogd"}
+      {authenticated ? "Ingelogd: " : "Niet ingelogd"}
       <a href="#login">{user}</a>
     </Navbar.Text>
   </Navbar.Collapse>

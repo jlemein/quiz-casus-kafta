@@ -1,8 +1,7 @@
-import logo from './logo.svg';
 import './QuizMaster.css';
 import React from "react"
-import LoginForm from "./LoginForm"
-import QuestionForm from "./QuestionForm"
+// import QuestionForm from "./QuestionForm"
+// import LoginRegisterForm from './LoginRegisterForm';
 import axios from 'axios';
 import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 // import { BarChart } from './BarChart'
@@ -131,19 +130,19 @@ class QuizMaster extends React.Component {
 
         console.log("Current Question ID: ", this.state.current_question.id)
 
-        if (this.state.current_question.id == result.question_id) {
+        if (this.state.current_question.id === result.question_id) {
             let newState = this.state;
 
-            if (result.vote == 0) {
+            if (result.vote === 0) {
                 newState.current_question.votes_a += 1;
             }
-            if (result.vote == 1) {
+            if (result.vote === 1) {
                 newState.current_question.votes_b += 1;
             }
-            if (result.vote == 2) {
+            if (result.vote === 2) {
                 newState.current_question.votes_c += 1;
             }
-            if (result.vote == 3) {
+            if (result.vote === 3) {
                 newState.current_question.votes_d += 1;
             }
 
@@ -184,12 +183,12 @@ class QuizMaster extends React.Component {
     }
 
     render() {
-        let el;
-        if (this.state.token) {
-            el = <QuestionForm user={this.state.user} accessToken={this.state.accessToken} />;
-        } else {
-            el = <LoginForm onSubmit={this.handleSubmit} />;
-        }
+        // let el;
+        // if (this.state.token) {
+        //     el = <QuestionForm user={this.state.user} accessToken={this.state.accessToken} />;
+        // } else {
+        //     el = <LoginRegisterForm />;
+        // }
 
         return (
             <div className="App">

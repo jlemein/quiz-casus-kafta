@@ -1,10 +1,8 @@
-import logo from './logo.svg';
 import './Home.css';
 import React from "react"
-import LoginForm from "./LoginForm"
 import QuestionForm from "./QuestionForm"
-import axios from 'axios';
-import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
+// import axios from 'axios';
+// import { Tab, Tabs, TabList, TabPanel } from 'react-tabs';
 import 'react-tabs/style/react-tabs.css';
 import LoginRegisterForm from './LoginRegisterForm';
 
@@ -26,10 +24,6 @@ class Home extends React.Component {
       question_answer_d: "D",
     }
 
-    // this.handleChange = this.handleChange.bind(this);
-    this.onLogin = this.onLogin.bind(this);
-    this.onRegister = this.onRegister.bind(this);
-
     this.logout = this.logout.bind(this);
     this.submitVote = this.submitVote.bind(this);
 
@@ -44,77 +38,6 @@ class Home extends React.Component {
       this.socket.onclose = this.onSocketClose.bind(this);
       this.socket.onerror = this.onSocketError.bind(this);
       this.socket.onmessage = this.onSocketMessage.bind(this);
-  }
-
-  async onLogin(user) {
-    const data = {
-      username: user.username,
-      password: user.password
-    }
-
-    console.log("Receiving login call: ", user)
-    try {
-      const result = await axios.post(process.env.REACT_APP_HTTP_API_LOGIN_URL, JSON.stringify(data))
-
-      let newState = this.state;
-      newState.error = null;
-      newState.access_token = result.data.access_token;
-      newState.user = user.username;
-      this.setState(newState);
-
-      console.log("Logged in with access token: ", newState.access_token);
-      localStorage.setItem("token", result.data.access_token)
-      localStorage.setItem('user', user.username)
-    } 
-    catch(err) {
-      let prevState = this.state;
-      console.log(err)
-
-      let errorMessage = err.response.data.error;
-      prevState.error = errorMessage;
-
-      this.setState(prevState);
-    }
-
-
-  }
-
-  async onRegister(user) {
-    console.log("Receiving register call: ", user)
-
-    const data = {
-      username: user.username,
-      password: user.password
-    }
-    
-
-    try {
-      const result = await axios.post(process.env.REACT_APP_HTTP_API_REGISTER_URL, JSON.stringify(data))
-      console.log("RRR", result)
-      const newState = this.state;
-      newState.error = null;
-      newState.access_token = result.data.access_token;
-      newState.user = user.username;
-      this.setState(newState);
-
-      console.log("Logged in with access token: ", newState.access_token);
-      localStorage.setItem('token', newState.access_token);
-      localStorage.setItem('user', newState.user)
-
-      // Logged in, now connect to websocket
-      console.log("Connecting with websocket:", this.state.wsUri);
-      this.openWebsocketConnection()
-    }
-    catch (err) {
-      let prevState = this.state;
-      console.log(err)
-
-      let errorMessage = err.response.data.error;
-      prevState.error = errorMessage;
-
-      this.setState(prevState);
-      console.error(err.message);
-    }
   }
 
   async submitVote (answer) {
