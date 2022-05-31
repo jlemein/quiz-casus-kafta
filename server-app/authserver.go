@@ -96,20 +96,37 @@ type HashConfiguration struct {
 }
 
 // AuthTokenClaim ...
-// This is the cliam object which gets parsed from the authorization header
+// This is the claim object which gets parsed from the authorization header
 type AuthTokenClaim struct {
 	*jwt.StandardClaims
 	UserClaims
 }
 
-func validateToken(authToken string) (AuthTokenClaim, error) {
-	// parse the authorization token
-	claims := AuthTokenClaim{}
+func validateToken() (*AuthTokenClaim, error) {
+	// Retrieve cookie
+	c, err := req.Cookie("token")
+	if err != nil {
+		if err == http.ErrNoCookie {
+			log.Println("/status (GET): Error - no cookie")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		log.Println("/status (GET): Error - no cookie")
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	authToken := c.Value
+	log.Println("Validating token: ", authToken)
+
+	claims := &AuthTokenClaim{}
+
 	tkn, err := jwt.ParseWithClaims(authToken, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("AUTH_PEPPER")), nil //claims.ValidateToken(token)
+		return []byte(os.Getenv("AUTH_PEPPER")), nil
 	})
 
-	log.Println("Claims: ", claims.UserClaims.Username)
+	// Check if signature
+	log.Println("Received claims: ", claims.UserClaims.Username)
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
 			log.Println("Signature invalid")
@@ -290,13 +307,13 @@ var RegisterHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 	}
 
 	// Create token
-	expiresAt := time.Now().Add(time.Minute * 5).Unix()
+	expiresAt := time.Now().Add(time.Minute * 5)
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	token.Claims = &AuthTokenClaim{
 		&jwt.StandardClaims{
-			ExpiresAt: expiresAt,
+			ExpiresAt: expiresAt.Unix(),
 		},
 		UserClaims{Id: -1, Username: user.Username},
 	}
@@ -307,13 +324,58 @@ var RegisterHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Req
 		fmt.Println(error)
 	}
 
-	json.NewEncoder(w).Encode(AuthToken{
-		Token:     tokenString,
-		TokenType: "Bearer",
-		ExpiresIn: expiresAt,
-	})
+	// json.NewEncoder(w).Encode(AuthToken{
+	// 	Token:     tokenString,
+	// 	TokenType: "Bearer",
+	// 	ExpiresIn: expiresAt.Unix(),
+	// })
+
+	fmt.Println("Setting cookie")
+	c := http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expiresAt,
+	}
+	http.SetCookie(w, &c)
+
+	// http.SetCookie(w, createToken(DbUser{}))
 
 })
+
+func createToken(user DbUser) *http.Cookie {
+	// Create token
+	expiresAt := time.Now().Add(time.Minute * 5)
+
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	token.Claims = &AuthTokenClaim{
+		&jwt.StandardClaims{
+			ExpiresAt: expiresAt.Unix(),
+		},
+		UserClaims{Id: user.Id, Username: user.Username},
+	}
+
+	secret := os.Getenv("AUTH_PEPPER")
+	tokenString, error := token.SignedString([]byte(secret))
+	if error != nil {
+		fmt.Println(error)
+	}
+
+	// json.NewEncoder(w).Encode(AuthToken{
+	// 	Token:     tokenString,
+	// 	TokenType: "Bearer",
+	// 	ExpiresIn: expiresAt.Unix(),
+	// })
+
+	fmt.Println("Setting cookie")
+	c := &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expiresAt,
+	}
+
+	return c
+}
 
 var LoginHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 	// make sure the CORS headers are written before body is written
@@ -367,13 +429,13 @@ var LoginHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Reques
 	log.Printf("User %s successfully logged in.\n", dbuser.Username)
 
 	// === Create access token for logged in user ===================================================
-	expiresAt := time.Now().Add(time.Minute * 10).Unix()
+	expiresAt := time.Now().Add(time.Minute * 10)
 
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	token.Claims = &AuthTokenClaim{
 		&jwt.StandardClaims{
-			ExpiresAt: expiresAt,
+			ExpiresAt: expiresAt.Unix(),
 		},
 		UserClaims{
 			Id:       dbuser.Id,
@@ -386,10 +448,18 @@ var LoginHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Reques
 		fmt.Println(error)
 	}
 
+	fmt.Println("Setting cookie (login)")
+	c := &http.Cookie{
+		Name:    "token",
+		Value:   tokenString,
+		Expires: expiresAt,
+	}
+	http.SetCookie(w, c)
+
 	json.NewEncoder(w).Encode(AuthToken{
 		Token:     tokenString,
 		TokenType: "Bearer",
-		ExpiresIn: expiresAt,
+		ExpiresIn: expiresAt.Unix(),
 	})
 
 })
@@ -407,22 +477,37 @@ type StatusMessage struct {
 
 // Status: indicates whether the API is up and running, and whether the user is logged in or not.
 var StatusHandler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-	statusMessage := StatusMessage{
-		Status:   "API is up and running",
-		LoggedIn: true,
-	}
-
 	writeCorsHeaders(&w, req)
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
+
+	claims, err := validateAuthorizationCookie(w, req)
+	if err != nil {
+		return
+	}
 
 	if (*req).Method == "OPTIONS" {
 		return
 	}
 
+	log.Println("/status OK")
+
+	authToken := c.Value
+
 	// retrieve authorization token from request
-	authToken := req.Header.Get("Authorization")
 	claims, err := validateToken(authToken)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Printf("Error: %s", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+
+	statusMessage := StatusMessage{
+		Status:   "API is up and running",
+		LoggedIn: true,
+	}
+
 	if err != nil {
 		statusMessage.LoggedIn = false
 	} else {
